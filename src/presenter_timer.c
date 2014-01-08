@@ -1,6 +1,6 @@
 #include <pebble.h>
 
-// TODO: exit, graphics, vibration, storing settings in the phone
+// TODO: exit, graphics, vibration (does not work as supposed to), storing settings in the phone
 
 typedef struct mytimer_struct {
     int min;
