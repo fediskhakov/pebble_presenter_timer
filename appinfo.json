@@ -1,8 +1,8 @@
 {
-  "uuid": "2080f8d7-42fc-4eef-953b-714378f04189",
-  "shortName": "presenter_timer",
-  "longName": "presenter_timer",
-  "companyName": "MakeAwesomeHappen",
+  "uuid": "2080f8d7-42fc-4fed-953b-714378f04189",
+  "shortName": "Presenter Timer",
+  "longName": "Timer designed to keep time during presentation and vibrate on half time, 5min, 1min and time over",
+  "companyName": "Fedor Iskhakov",
   "versionCode": 1,
   "versionLabel": "1.0.0",
   "watchapp": {
