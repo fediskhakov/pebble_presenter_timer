@@ -10,7 +10,8 @@ static TextLayer *text_layer1;
 static TextLayer *text_layer2;
 static int iInterval=5; //default
 static int nInterval=10;
-static int Intervals[]={5,15,20,25,30,45,60,75,90,120};
+// static int Intervals[]={5,15,20,25,30,45,60,75,90,120};
+static int Intervals[]={1,15,20,25,30,45,60,75,90,120};//for testing
 static int PrestartTime=5;
 static char str[]="999:99 min (max)";
 static int started=0; //0=initial stage 1=prestart 2=timer running
@@ -39,6 +40,18 @@ static void display_timer() {
   text_layer_set_text(text_layer2, str); 
 }
 
+static void timeup() {
+  //exit when timer is at 00:00
+  //vibrate a lot and exit
+
+}
+
+static void vibrate(int milsec) {
+  //vibrate for given number of miliseconds
+
+
+}
+
 static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
   // APP_LOG(APP_LOG_VERBOSE, "Time flies!");
   if (started==1) {
@@ -58,11 +71,18 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
   }
   else
   { //timer running: decrease by 1 sec
-
+    TimerData.sec--;
+    if (TimerData.sec==0 && TimerData.min==0) timeup(); //stop and exit
+    if (TimerData.sec<0)
+    {
+      TimerData.sec=59;
+      TimerData.min--;
+    } 
   }
   //chage display
   display_timer();
   //vibrate
+  
 
 }
 
