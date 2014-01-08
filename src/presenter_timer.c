@@ -1,25 +1,46 @@
 #include <pebble.h>
 
+// TODO: exit, graphics, vibration, storing settings in the phone
+
 typedef struct mytimer_struct {
     int min;
     int sec;
 } mytimer;
-
 static Window *window;
 static TextLayer *text_layer1;
 static TextLayer *text_layer2;
 static int iInterval=5; //default
-// static int Intervals[]={5,15,20,25,30,45,60,75,90,120};
-static int Intervals[]={1,15,20,25,30,45,60,75,90,120};//for testing
-#define nInterval 10
+static int Intervals[]={3,5,15,20,25,30,45,60,75,90,120,180};
+#define nInterval 12
 #define PrestartTime 5
-#define ShortVibrate 200
-#define MedVibrate 500
-#define LongVibrate 1000
 static char str[]="999:99 min (max)";
-static int started=0; //0=initial stage 1=prestart 2=timer running
+static int started=0; //0=initial stage 1=prestart 2=timer running 3=finished
 static mytimer TimerData;
 static AppTimer *one_second;
+static const VibePattern prestart_beep = {
+  .durations = (uint32_t []) {50},
+  .num_segments = 1
+};
+static const VibePattern start_main = {
+  .durations = (uint32_t []) {250},
+  .num_segments = 1
+};
+static const VibePattern half_time = {
+  .durations = (uint32_t []) {500,50,500},
+  .num_segments = 3
+};
+static const VibePattern min_5 = {
+  .durations = (uint32_t []) {500,50,500,50,500},
+  .num_segments = 5
+};
+static const VibePattern min_1 = {
+  .durations = (uint32_t []) {750},
+  .num_segments = 1
+};
+static const VibePattern time_up = {
+  .durations = (uint32_t []) {750,100,750,100,750},
+  .num_segments = 5
+};
 
 
 static void display_interval() {
@@ -46,16 +67,10 @@ static void display_timer() {
 static void timeup() {
   //exit when timer is at 00:00
   //vibrate a lot and exit
-  
+  started=3;//mark that time finished
   tick_timer_service_unsubscribe();
-
-
-}
-
-static void vibrate(const int milsec,const int times) {
-  //vibrate for given number of miliseconds
-
-  text_layer_set_text(text_layer2, "Vibro");
+  text_layer_set_text(text_layer2, "Time's up");
+  vibes_enqueue_custom_pattern(time_up);
 }
 
 static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
@@ -72,7 +87,7 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
         //initialize main timer
         TimerData.min=Intervals[iInterval];
         TimerData.sec=0;
-        vibrate(MedVibrate,1);
+        vibes_enqueue_custom_pattern(start_main);
       }
     }
   }
@@ -89,17 +104,17 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
   //chage display
   display_timer();
   //vibrate
-  if (started==1) vibrate(ShortVibrate,1);//prestart
-  if (TimerData.min==5 && TimerData.sec==0 && Intervals[iInterval]>5) vibrate(MedVibrate,2); //on 5 min
-  if (TimerData.min==1 && TimerData.sec==0 && Intervals[iInterval]>1) vibrate(MedVibrate,2); //on 1 min
+  if (started==1) vibes_enqueue_custom_pattern(prestart_beep);
+  if (TimerData.min==5 && TimerData.sec==0 && Intervals[iInterval]>5) vibes_enqueue_custom_pattern(min_5); //on 5 min
+  if (TimerData.min==1 && TimerData.sec==0 && Intervals[iInterval]>1) vibes_enqueue_custom_pattern(min_1); //on 1 min
   //on half time
   if (Intervals[iInterval]%2==0)
   { //even number of minutes
-      if (TimerData.min==Intervals[iInterval]/2 && TimerData.sec==0) vibrate(MedVibrate,1); //on halftime
+      if (TimerData.min==Intervals[iInterval]/2 && TimerData.sec==0) vibes_enqueue_custom_pattern(half_time); //on halftime
   }
   else
   { //off number of minutes
-      if (TimerData.min==Intervals[iInterval]/2 && TimerData.sec==30) vibrate(MedVibrate,1); //on halftime
+      if (TimerData.min==Intervals[iInterval]/2 && TimerData.sec==30) vibes_enqueue_custom_pattern(half_time); //on halftime
   }
 }
 
@@ -173,7 +188,7 @@ static void window_load(Window *window) {
 static void window_unload(Window *window) {
   text_layer_destroy(text_layer1);
   text_layer_destroy(text_layer2);
-  // if (started) tick_timer_service_unsubscribe(); //TEMP!!!
+  if (started && started!=3) tick_timer_service_unsubscribe(); //only unsubscribe here if time didn't run out
 }
 
 int main(void) {
