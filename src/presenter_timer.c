@@ -9,10 +9,13 @@ static Window *window;
 static TextLayer *text_layer1;
 static TextLayer *text_layer2;
 static int iInterval=5; //default
-static int nInterval=10;
 // static int Intervals[]={5,15,20,25,30,45,60,75,90,120};
 static int Intervals[]={1,15,20,25,30,45,60,75,90,120};//for testing
-static int PrestartTime=5;
+#define nInterval 10
+#define PrestartTime 5
+#define ShortVibrate 200
+#define MedVibrate 500
+#define LongVibrate 1000
 static char str[]="999:99 min (max)";
 static int started=0; //0=initial stage 1=prestart 2=timer running
 static mytimer TimerData;
@@ -43,13 +46,16 @@ static void display_timer() {
 static void timeup() {
   //exit when timer is at 00:00
   //vibrate a lot and exit
+  
+  tick_timer_service_unsubscribe();
+
 
 }
 
-static void vibrate(int milsec) {
+static void vibrate(const int milsec,const int times) {
   //vibrate for given number of miliseconds
 
-
+  text_layer_set_text(text_layer2, "Vibro");
 }
 
 static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
@@ -66,6 +72,7 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
         //initialize main timer
         TimerData.min=Intervals[iInterval];
         TimerData.sec=0;
+        vibrate(MedVibrate,1);
       }
     }
   }
@@ -82,8 +89,18 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
   //chage display
   display_timer();
   //vibrate
-  
-
+  if (started==1) vibrate(ShortVibrate,1);//prestart
+  if (TimerData.min==5 && TimerData.sec==0 && Intervals[iInterval]>5) vibrate(MedVibrate,2); //on 5 min
+  if (TimerData.min==1 && TimerData.sec==0 && Intervals[iInterval]>1) vibrate(MedVibrate,2); //on 1 min
+  //on half time
+  if (Intervals[iInterval]%2==0)
+  { //even number of minutes
+      if (TimerData.min==Intervals[iInterval]/2 && TimerData.sec==0) vibrate(MedVibrate,1); //on halftime
+  }
+  else
+  { //off number of minutes
+      if (TimerData.min==Intervals[iInterval]/2 && TimerData.sec==30) vibrate(MedVibrate,1); //on halftime
+  }
 }
 
 static void run_timer() {
@@ -97,7 +114,7 @@ static void run_timer() {
   //start timer
   tick_timer_service_subscribe(SECOND_UNIT, handle_tick);
   //Show ready message (to wait for the first tick)
-  text_layer_set_text(text_layer2, "Ready!");
+  //text_layer_set_text(text_layer2, "Ready!");
 }
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -156,7 +173,7 @@ static void window_load(Window *window) {
 static void window_unload(Window *window) {
   text_layer_destroy(text_layer1);
   text_layer_destroy(text_layer2);
-  if (started) tick_timer_service_unsubscribe();
+  // if (started) tick_timer_service_unsubscribe(); //TEMP!!!
 }
 
 int main(void) {
