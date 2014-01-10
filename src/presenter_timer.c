@@ -3,20 +3,20 @@
 // TODO: graphics, storing settings in the phone..
 
 typedef struct mytimer_struct {
-    int min;
-    int sec;
+    uint16_t min;
+    int16_t sec;
 } mytimer;
 static Window *window;
 static TextLayer *text_layer1;
 static TextLayer *text_layer2;
-static int iInterval=5; //default
-static int Intervals[]={3,5,15,20,25,30,45,60,75,90,120,180};
+static Layer *dial_layer;
+static uint16_t iInterval=5; //default
+static uint16_t Intervals[]={3,5,15,20,25,30,45,60,75,90,120,180};
 #define nInterval 12
 #define PrestartTime 5
 static char str[]="999:99 min (max)";
-static int started=0; //0=initial stage 1=prestart 2=timer running 3=finished
+static uint16_t started=0; //0=initial stage 1=prestart 2=timer running 3=finished
 static mytimer TimerData;
-static AppTimer *one_second;
 static const VibePattern prestart_beep = {
   .durations = (uint32_t []) {50},
   .num_segments = 1
@@ -25,6 +25,14 @@ static const VibePattern start_main = {
   .durations = (uint32_t []) {250},
   .num_segments = 1
 };
+#define DialRadius 52
+#define DialLineThickness 3
+static GRect dial_layer_frame;
+static GPoint dial_center;
+#define DialNumSegments 160
+static GPoint dial_path[DialNumSegments+2];
+static int16_t iDialSegment;
+static GPath dial_gpath;
 
 
 static void display_interval() {
@@ -46,7 +54,21 @@ static void display_timer() {
   //shows current value of the timer
   snprintf(str,6,"%d:%02d",TimerData.min,TimerData.sec);
   text_layer_set_text(text_layer2, str); 
-  layer_mark_dirty(text_layer_get_layer(text_layer2));
+  // layer_mark_dirty(text_layer_get_layer(text_layer2));
+}
+
+static void dial_layer_update_callback(Layer *me, GContext* ctx) {
+  //draws the dial
+  if (started!=2) return;
+  graphics_context_set_fill_color(ctx, GColorWhite);
+  graphics_fill_circle(ctx, dial_center, DialRadius);
+  graphics_context_set_fill_color(ctx, GColorBlack);
+  graphics_fill_circle(ctx, dial_center, DialRadius-DialLineThickness);
+  //How many points of the path to fill (3+ to make a bit faster, safe due to dimension of dial_path)
+  dial_gpath.num_points=3+DialNumSegments*(Intervals[iInterval]*60-TimerData.min*60-TimerData.sec)/(Intervals[iInterval]*60);
+  //draw the filled area
+  graphics_context_set_fill_color(ctx,GColorWhite);
+  gpath_draw_filled(ctx,&dial_gpath);
 }
 
 static void timeup() {
@@ -56,6 +78,7 @@ static void timeup() {
   tick_timer_service_unsubscribe();
   //hide textlayer 2 and show textlayer 1
   layer_set_hidden(text_layer_get_layer(text_layer2),true);
+  layer_set_hidden(dial_layer,true);
   layer_set_hidden(text_layer_get_layer(text_layer1),false);
   text_layer_set_text(text_layer1, "Time's up");
   vibes_long_pulse();
@@ -108,6 +131,8 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
   { //off number of minutes
       if (TimerData.min==Intervals[iInterval]/2 && TimerData.sec==30) vibes_double_pulse(); //on halftime
   }
+  //update dial
+  layer_mark_dirty(dial_layer);
 }
 
 static void run_timer() {
@@ -116,6 +141,7 @@ static void run_timer() {
   //hide textlayer 1 and show textlayer 2
   layer_set_hidden(text_layer_get_layer(text_layer1),true);
   layer_set_hidden(text_layer_get_layer(text_layer2),false);
+  layer_set_hidden(dial_layer,false);
   //initialize timer
   TimerData.min=0;
   TimerData.sec=-1;
@@ -149,6 +175,8 @@ static void click_config_provider(void *context) {
 }
 
 static void window_load(Window *window) {
+  int16_t i;
+  int32_t angle;
   //main window
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
@@ -168,15 +196,38 @@ static void window_load(Window *window) {
   text_layer_set_text_alignment(text_layer2, GTextAlignmentCenter);
   text_layer_set_font(text_layer2, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
 
+  //image layer for the dial
+  dial_layer_frame=(GRect) { .origin = { 0, 0 }, .size = { bounds.size.w, 120 } };
+  dial_center=(GPoint) {bounds.size.w/2,DialRadius+2};
+  dial_layer = layer_create(dial_layer_frame);
+  layer_set_update_proc(dial_layer, &dial_layer_update_callback);
 
+  //compute the dots in the path
+  dial_path[0]=dial_center;
+  for (i=1;i<DialNumSegments+1;i++)
+  {
+    angle = TRIG_MAX_ANGLE * (i-1) / DialNumSegments;
+    dial_path[i].y = (-cos_lookup(angle) * (DialRadius+(DialLineThickness/2)) / TRIG_MAX_RATIO) + dial_center.y;
+    dial_path[i].x = ( sin_lookup(angle) * (DialRadius+(DialLineThickness/2)) / TRIG_MAX_RATIO) + dial_center.x;
+  }
+  dial_path[DialNumSegments+1].y=dial_path[DialNumSegments].y;
+  dial_path[DialNumSegments+1].x=dial_path[DialNumSegments].x;
+  iDialSegment=0;//starting position
+  //all values of gpath structure are constant except the number of points
+  dial_gpath.offset=GPointZero;
+  dial_gpath.rotation=0;
+  dial_gpath.points=dial_path;
+  
   //add text layer as a child to window
   layer_add_child(window_layer, text_layer_get_layer(text_layer1));
   layer_add_child(window_layer, text_layer_get_layer(text_layer2));
-
+  layer_add_child(window_layer, dial_layer);
+  
   //display default timer interval
   display_interval();
-  //hide layer2
+  //hide other layers
   layer_set_hidden(text_layer_get_layer(text_layer2),true);
+  layer_set_hidden(dial_layer,true);
 }
 
 static void window_unload(Window *window) {
@@ -196,7 +247,7 @@ int main(void) {
   const bool animated = true;
   window_stack_push(window, animated);
   //log
-  // APP_LOG(APP_LOG_LEVEL_DEBUG, "Done initializing, pushed window: %p", window);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Done initializing, pushed window: %p", window);
   //main loop
   app_event_loop();
   //clean up (all children are destroyed in .unload)
