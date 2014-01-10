@@ -1,6 +1,6 @@
 #include <pebble.h>
 
-// TODO: exit, graphics, vibration (does not work as supposed to), storing settings in the phone
+// TODO: graphics, storing settings in the phone..
 
 typedef struct mytimer_struct {
     int min;
@@ -22,24 +22,8 @@ static const VibePattern prestart_beep = {
   .num_segments = 1
 };
 static const VibePattern start_main = {
-  .durations = (uint32_t []) {250},
+  .durations = (uint32_t []) {200},
   .num_segments = 1
-};
-static const VibePattern half_time = {
-  .durations = (uint32_t []) {500,50,500},
-  .num_segments = 3
-};
-static const VibePattern min_5 = {
-  .durations = (uint32_t []) {500,50,500,50,500},
-  .num_segments = 5
-};
-static const VibePattern min_1 = {
-  .durations = (uint32_t []) {750},
-  .num_segments = 1
-};
-static const VibePattern time_up = {
-  .durations = (uint32_t []) {750,100,750,100,750},
-  .num_segments = 5
 };
 
 
@@ -69,8 +53,9 @@ static void timeup() {
   //vibrate a lot and exit
   started=3;//mark that time finished
   tick_timer_service_unsubscribe();
-  text_layer_set_text(text_layer2, "Time's up");
-  vibes_enqueue_custom_pattern(time_up);
+  text_layer_set_text(text_layer2, "");
+  text_layer_set_text(text_layer1, "Time's up");
+  vibes_long_pulse();
 }
 
 static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
@@ -94,7 +79,11 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
   else
   { //timer running: decrease by 1 sec
     TimerData.sec--;
-    if (TimerData.sec==0 && TimerData.min==0) timeup(); //stop and exit
+    if (TimerData.sec==0 && TimerData.min==0) 
+    {
+      timeup(); //stop and exit
+      return;
+    }
     if (TimerData.sec<0)
     {
       TimerData.sec=59;
@@ -104,17 +93,17 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
   //chage display
   display_timer();
   //vibrate
-  if (started==1) vibes_enqueue_custom_pattern(prestart_beep);
-  if (TimerData.min==5 && TimerData.sec==0 && Intervals[iInterval]>5) vibes_enqueue_custom_pattern(min_5); //on 5 min
-  if (TimerData.min==1 && TimerData.sec==0 && Intervals[iInterval]>1) vibes_enqueue_custom_pattern(min_1); //on 1 min
+  if (started==1 && TimerData.sec<=5) vibes_enqueue_custom_pattern(prestart_beep);
+  if (TimerData.min==5 && TimerData.sec==0 && Intervals[iInterval]>5) vibes_double_pulse(); //on 5 min
+  if (TimerData.min==1 && TimerData.sec==0 && Intervals[iInterval]>1) vibes_double_pulse(); //on 1 min
   //on half time
   if (Intervals[iInterval]%2==0)
   { //even number of minutes
-      if (TimerData.min==Intervals[iInterval]/2 && TimerData.sec==0) vibes_enqueue_custom_pattern(half_time); //on halftime
+      if (TimerData.min==Intervals[iInterval]/2 && TimerData.sec==0) vibes_double_pulse(); //on halftime
   }
   else
   { //off number of minutes
-      if (TimerData.min==Intervals[iInterval]/2 && TimerData.sec==30) vibes_enqueue_custom_pattern(half_time); //on halftime
+      if (TimerData.min==Intervals[iInterval]/2 && TimerData.sec==30) vibes_double_pulse(); //on halftime
   }
 }
 
