@@ -64,8 +64,8 @@ static void dial_layer_update_callback(Layer *me, GContext* ctx) {
   graphics_fill_circle(ctx, dial_center, DialRadius);
   graphics_context_set_fill_color(ctx, GColorBlack);
   graphics_fill_circle(ctx, dial_center, DialRadius-DialLineThickness);
-  //How many points of the path to fill (3+ to make a bit faster, safe due to dimension of dial_path)
-  dial_gpath.num_points=3+DialNumSegments*(Intervals[iInterval]*60-TimerData.min*60-TimerData.sec)/(Intervals[iInterval]*60);
+  //How many points of the path to fill 
+  dial_gpath.num_points=2+DialNumSegments*(Intervals[iInterval]*60-TimerData.min*60-TimerData.sec)/(Intervals[iInterval]*60);
   //draw the filled area
   graphics_context_set_fill_color(ctx,GColorWhite);
   gpath_draw_filled(ctx,&dial_gpath);
