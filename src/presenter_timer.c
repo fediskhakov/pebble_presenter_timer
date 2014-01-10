@@ -22,7 +22,7 @@ static const VibePattern prestart_beep = {
   .num_segments = 1
 };
 static const VibePattern start_main = {
-  .durations = (uint32_t []) {200},
+  .durations = (uint32_t []) {250},
   .num_segments = 1
 };
 
@@ -46,6 +46,7 @@ static void display_timer() {
   //shows current value of the timer
   snprintf(str,6,"%d:%02d",TimerData.min,TimerData.sec);
   text_layer_set_text(text_layer2, str); 
+  layer_mark_dirty(text_layer_get_layer(text_layer2));
 }
 
 static void timeup() {
@@ -53,7 +54,9 @@ static void timeup() {
   //vibrate a lot and exit
   started=3;//mark that time finished
   tick_timer_service_unsubscribe();
-  text_layer_set_text(text_layer2, "");
+  //hide textlayer 2 and show textlayer 1
+  layer_set_hidden(text_layer_get_layer(text_layer2),true);
+  layer_set_hidden(text_layer_get_layer(text_layer1),false);
   text_layer_set_text(text_layer1, "Time's up");
   vibes_long_pulse();
 }
@@ -111,7 +114,8 @@ static void run_timer() {
   //all the action of running the timer
   started=1;//disable buttons
   //hide textlayer 1 and show textlayer 2
-  text_layer_set_text(text_layer1, "");
+  layer_set_hidden(text_layer_get_layer(text_layer1),true);
+  layer_set_hidden(text_layer_get_layer(text_layer2),false);
   //initialize timer
   TimerData.min=0;
   TimerData.sec=-1;
@@ -164,14 +168,15 @@ static void window_load(Window *window) {
   text_layer_set_text_alignment(text_layer2, GTextAlignmentCenter);
   text_layer_set_font(text_layer2, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
 
+
   //add text layer as a child to window
   layer_add_child(window_layer, text_layer_get_layer(text_layer1));
   layer_add_child(window_layer, text_layer_get_layer(text_layer2));
 
   //display default timer interval
   display_interval();
-  //show nothing on layer2
-  text_layer_set_text(text_layer2, "");
+  //hide layer2
+  layer_set_hidden(text_layer_get_layer(text_layer2),true);
 }
 
 static void window_unload(Window *window) {
