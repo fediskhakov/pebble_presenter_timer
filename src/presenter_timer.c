@@ -10,7 +10,7 @@ static Window *window;
 static TextLayer *text_layer1;
 static TextLayer *text_layer2;
 static Layer *dial_layer;
-static uint16_t iInterval=5; //default
+static uint16_t iInterval=6; //default
 static uint16_t Intervals[]={3,5,15,20,25,30,45,60,75,90,120,180};
 #define nInterval 12
 #define PrestartTime 5
